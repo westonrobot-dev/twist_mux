@@ -41,38 +41,34 @@
 
 #include <memory>
 
-namespace twist_mux
-{
-class TwistMuxDiagnostics
-{
-public:
+#include "wra_diagnostics/diagnostic_processor.hpp"
+
+namespace twist_mux {
+class TwistMuxDiagnostics {
+ public:
   typedef TwistMuxDiagnosticsStatus status_type;
 
-  static constexpr double MAIN_LOOP_TIME_MIN = 0.2;   // [s]
+  static constexpr double MAIN_LOOP_TIME_MIN = 0.2;  // [s]
   static constexpr double READING_AGE_MIN = 3.0;     // [s]
 
-  explicit TwistMuxDiagnostics(TwistMux * mux);
+  explicit TwistMuxDiagnostics(TwistMux* mux);
   virtual ~TwistMuxDiagnostics() = default;
 
-  void diagnostics(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  void ForceUpdate(const status_type::ConstPtr& status);
+  void MuxStatusCheck(westonrobot::DiagnosticResult& result);
 
-  void update();
-
-  void updateStatus(const status_type::ConstPtr & status);
-
-private:
+ private:
   /**
    * @brief Levels
    */
-  enum
-  {
+  enum {
     OK = diagnostic_msgs::msg::DiagnosticStatus::OK,
     WARN = diagnostic_msgs::msg::DiagnosticStatus::WARN,
     ERROR = diagnostic_msgs::msg::DiagnosticStatus::ERROR
   };
 
-  std::shared_ptr<diagnostic_updater::Updater> diagnostic_;
-  std::shared_ptr<status_type> status_;
+  std::unique_ptr<status_type> status_;
+  std::shared_ptr<westonrobot::DiagnosticProcessor> diagnosic_processor_;
 };
 }  // namespace twist_mux
 

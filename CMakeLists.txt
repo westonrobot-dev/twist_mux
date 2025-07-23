@@ -16,6 +16,7 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(diagnostic_updater REQUIRED)
+find_package(wra_diagnostics REQUIRED)
 
 include_directories(include)
 
@@ -26,6 +27,7 @@ set(
   "geometry_msgs"
   "visualization_msgs"
   "diagnostic_updater"
+  "wra_diagnostics"
 )
 
 add_executable(twist_mux

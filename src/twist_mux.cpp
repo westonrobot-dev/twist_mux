@@ -104,7 +104,7 @@ void TwistMux::init()
 void TwistMux::updateDiagnostics()
 {
   status_->priority = getLockPriority();
-  diagnostics_->updateStatus(status_);
+  diagnostics_->ForceUpdate(status_);
 }
 
 void TwistMux::publishTwist(const geometry_msgs::msg::Twist::ConstSharedPtr & msg)

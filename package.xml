@@ -23,6 +23,7 @@
   <depend>geometry_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>diagnostic_updater</depend>
+  <depend>wra_diagnostics</depend>
 
   <exec_depend>twist_mux_msgs</exec_depend>
 

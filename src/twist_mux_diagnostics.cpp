@@ -26,7 +26,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-
 /*
  * @author Enrique Fernandez
  * @author Brighten Lee
@@ -39,24 +38,19 @@
 
 #include <memory>
 
-namespace twist_mux
-{
-TwistMuxDiagnostics::TwistMuxDiagnostics(TwistMux * mux)
-{
-  diagnostic_ = std::make_shared<diagnostic_updater::Updater>(mux);
-  status_ = std::make_shared<status_type>();
+namespace twist_mux {
+using namespace westonrobot;
 
-  diagnostic_->add("Twist mux status", this, &TwistMuxDiagnostics::diagnostics);
-  diagnostic_->setHardwareID("none");
+TwistMuxDiagnostics::TwistMuxDiagnostics(TwistMux* mux) {
+  status_ = std::make_unique<status_type>();
+
+  diagnosic_processor_ =
+      std::make_shared<DiagnosticProcessor>(mux, "twist_mux");
+  diagnosic_processor_->AddDiagnosticAction(
+      "control/twist_mux", this, &TwistMuxDiagnostics::MuxStatusCheck);
 }
 
-void TwistMuxDiagnostics::update()
-{
-  diagnostic_->force_update();
-}
-
-void TwistMuxDiagnostics::updateStatus(const status_type::ConstPtr & status)
-{
+void TwistMuxDiagnostics::ForceUpdate(const status_type::ConstPtr& status) {
   status_->velocity_hs = status->velocity_hs;
   status_->lock_hs = status->lock_hs;
   status_->priority = status->priority;
@@ -64,40 +58,42 @@ void TwistMuxDiagnostics::updateStatus(const status_type::ConstPtr & status)
   status_->main_loop_time = status->main_loop_time;
   status_->reading_age = status->reading_age;
 
-  update();
+  diagnosic_processor_->ForceUpdate();
 }
 
-void TwistMuxDiagnostics::diagnostics(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
+void TwistMuxDiagnostics::MuxStatusCheck(
+    westonrobot::DiagnosticResult& result) {
   /// Check if the loop period is quick enough
   if (status_->main_loop_time > MAIN_LOOP_TIME_MIN) {
-    stat.summary(ERROR, "loop time too long");
+    result.SetSummary(ERROR, "Loop time of twist_mux is too long");
   } else if (status_->reading_age > READING_AGE_MIN) {
-    stat.summary(ERROR, "data received is too old");
+    result.SetSummary(ERROR, "Data received by twist_mux is too old");
   } else {
-    stat.summary(OK, "ok");
+    result.SetSummary(OK, "twist_mux is ok");
   }
 
-  for (auto & velocity_h : *status_->velocity_hs) {
-    stat.addf(
-      "velocity " + velocity_h.getName(), " %s (listening to %s @ %fs with priority #%d)",
-      (velocity_h.isMasked(status_->priority) ? "masked" : "unmasked"),
-      velocity_h.getTopic().c_str(),
-      velocity_h.getTimeout().seconds(), static_cast<int>(velocity_h.getPriority()));
+  for (auto& velocity_h : *status_->velocity_hs) {
+    std::string value =
+        std::string(velocity_h.isMasked(status_->priority) ? "masked"
+                                                           : "unmasked") +
+        " (listening to " + velocity_h.getTopic() + " @ " +
+        std::to_string(velocity_h.getTimeout().seconds()) +
+        "s with priority #" +
+        std::to_string(static_cast<int>(velocity_h.getPriority())) + ")";
+    result.AddKeyValue("velocity " + velocity_h.getName(), value);
   }
 
-  for (const auto & lock_h : *status_->lock_hs) {
-    stat.addf(
-      "lock " + lock_h.getName(), " %s (listening to %s @ %fs with priority #%d)",
-      (lock_h.isLocked() ? "locked" : "free"), lock_h.getTopic().c_str(),
-      lock_h.getTimeout().seconds(),
-      static_cast<int>(lock_h.getPriority()));
+  for (const auto& lock_h : *status_->lock_hs) {
+    std::string value =
+        std::string(lock_h.isLocked() ? "locked" : "free") + " (listening to " +
+        lock_h.getTopic() + " @ " +
+        std::to_string(lock_h.getTimeout().seconds()) + "s with priority #" +
+        std::to_string(static_cast<int>(lock_h.getPriority())) + ")";
+    result.AddKeyValue("lock " + lock_h.getName(), value);
   }
 
-  stat.add("current priority", static_cast<int>(status_->priority));
-
-  stat.add("loop time in [sec]", status_->main_loop_time);
-  stat.add("data age in [sec]", status_->reading_age);
+  result.AddKeyValue("current priority", static_cast<int>(status_->priority));
+  result.AddKeyValue("loop time in [sec]", status_->main_loop_time);
+  result.AddKeyValue("data age in [sec]", status_->reading_age);
 }
-
 }  // namespace twist_mux
