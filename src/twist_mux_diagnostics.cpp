@@ -34,20 +34,18 @@
 #include <twist_mux/twist_mux_diagnostics.hpp>
 #include <twist_mux/twist_mux_diagnostics_status.hpp>
 
-#include <diagnostic_updater/diagnostic_updater.hpp>
-
 #include <memory>
 
 namespace twist_mux {
-using namespace westonrobot;
 
 TwistMuxDiagnostics::TwistMuxDiagnostics(TwistMux* mux) {
   status_ = std::make_unique<status_type>();
 
-  diagnosic_processor_ =
-      std::make_shared<DiagnosticProcessor>(mux, "twist_mux");
-  diagnosic_processor_->AddDiagnosticAction(
-      "control/twist_mux", this, &TwistMuxDiagnostics::MuxStatusCheck);
+  diagnostic_updater_ =
+      std::make_shared<diagnostic_updater::Updater>(mux);
+  diagnostic_updater_->setHardwareID("Command Priority");
+  diagnostic_updater_->add(
+      "Control/Command Priority", this, &TwistMuxDiagnostics::MuxStatusCheck);
 }
 
 void TwistMuxDiagnostics::ForceUpdate(const status_type::ConstPtr& status) {
@@ -58,18 +56,18 @@ void TwistMuxDiagnostics::ForceUpdate(const status_type::ConstPtr& status) {
   status_->main_loop_time = status->main_loop_time;
   status_->reading_age = status->reading_age;
 
-  diagnosic_processor_->ForceUpdate();
+  diagnostic_updater_->force_update();
 }
 
 void TwistMuxDiagnostics::MuxStatusCheck(
-    westonrobot::DiagnosticResult& result) {
+    diagnostic_updater::DiagnosticStatusWrapper& stat) {
   /// Check if the loop period is quick enough
   if (status_->main_loop_time > MAIN_LOOP_TIME_MIN) {
-    result.SetSummary(ERROR, "Loop time of twist_mux is too long");
+    stat.summary(ERROR, "Command priority loop time is too long.");
   } else if (status_->reading_age > READING_AGE_MIN) {
-    result.SetSummary(ERROR, "Data received by twist_mux is too old");
+    stat.summary(ERROR, "Command input data is too old.");
   } else {
-    result.SetSummary(OK, "twist_mux is ok");
+    stat.summary(OK, "Command priority is operating normally.");
   }
 
   for (auto& velocity_h : *status_->velocity_hs) {
@@ -80,7 +78,7 @@ void TwistMuxDiagnostics::MuxStatusCheck(
         std::to_string(velocity_h.getTimeout().seconds()) +
         "s with priority #" +
         std::to_string(static_cast<int>(velocity_h.getPriority())) + ")";
-    result.AddKeyValue("velocity " + velocity_h.getName(), value);
+    stat.add("velocity " + velocity_h.getName(), value);
   }
 
   for (const auto& lock_h : *status_->lock_hs) {
@@ -89,11 +87,11 @@ void TwistMuxDiagnostics::MuxStatusCheck(
         lock_h.getTopic() + " @ " +
         std::to_string(lock_h.getTimeout().seconds()) + "s with priority #" +
         std::to_string(static_cast<int>(lock_h.getPriority())) + ")";
-    result.AddKeyValue("lock " + lock_h.getName(), value);
+    stat.add("lock " + lock_h.getName(), value);
   }
 
-  result.AddKeyValue("current priority", static_cast<int>(status_->priority));
-  result.AddKeyValue("loop time in [sec]", status_->main_loop_time);
-  result.AddKeyValue("data age in [sec]", status_->reading_age);
+  stat.add("current priority", static_cast<int>(status_->priority));
+  stat.add("loop time in [sec]", status_->main_loop_time);
+  stat.add("data age in [sec]", status_->reading_age);
 }
 }  // namespace twist_mux

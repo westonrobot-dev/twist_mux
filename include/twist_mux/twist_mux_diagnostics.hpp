@@ -41,8 +41,6 @@
 
 #include <memory>
 
-#include "wra_diagnostics/diagnostic_processor.hpp"
-
 namespace twist_mux {
 class TwistMuxDiagnostics {
  public:
@@ -55,12 +53,9 @@ class TwistMuxDiagnostics {
   virtual ~TwistMuxDiagnostics() = default;
 
   void ForceUpdate(const status_type::ConstPtr& status);
-  void MuxStatusCheck(westonrobot::DiagnosticResult& result);
+  void MuxStatusCheck(diagnostic_updater::DiagnosticStatusWrapper& stat);
 
  private:
-  /**
-   * @brief Levels
-   */
   enum {
     OK = diagnostic_msgs::msg::DiagnosticStatus::OK,
     WARN = diagnostic_msgs::msg::DiagnosticStatus::WARN,
@@ -68,7 +63,7 @@ class TwistMuxDiagnostics {
   };
 
   std::unique_ptr<status_type> status_;
-  std::shared_ptr<westonrobot::DiagnosticProcessor> diagnosic_processor_;
+  std::shared_ptr<diagnostic_updater::Updater> diagnostic_updater_;
 };
 }  // namespace twist_mux
 
